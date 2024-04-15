@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -16,13 +15,17 @@ func NewStressTestUseCase() *StressTestUseCase {
 	return &StressTestUseCase{}
 }
 
-func (s *StressTestUseCase) Exec(url string, requestsAmount, threadsAmount int64) error {
-	log.Println("inicia stress test")
+func (s *StressTestUseCase) Exec(url string, requestsAmount, threadsAmount int64) (*Report, error) {
 	startTime := time.Now()
 	sentRequests := int64(0)
-	statusCodeRespList := map[int]int{}
+	statusCodeRespList := map[int]int64{}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
 	wg := sync.WaitGroup{}
 	wg.Add(int(threadsAmount))
+	m := sync.Mutex{}
 	for i := int64(0); i < threadsAmount; i++ {
 		go func() {
 			for {
@@ -31,23 +34,23 @@ func (s *StressTestUseCase) Exec(url string, requestsAmount, threadsAmount int64
 					break
 				}
 				atomic.AddInt64(&sentRequests, 1)
-				req, err := http.NewRequest("GET", url, nil)
-				if err != nil {
-
-				}
 				res, err := http.DefaultClient.Do(req)
 				if err != nil {
-
+					log.Println(err.Error())
 				}
+				m.Lock()
 				statusCodeRespList[res.StatusCode] += 1
+				m.Unlock()
 			}
 		}()
 	}
 	wg.Wait()
 	duration := time.Now().Sub(startTime)
-	fmt.Println("Tempo total gasto na execução:", duration)
-	fmt.Println("Quantidade total de requests realizados:", requestsAmount)
-	fmt.Println("Lista de status HTTP", statusCodeRespList)
-	log.Println("finaliza stress test")
-	return nil
+	report := Report{
+		TotalTimeExec:           duration,
+		TotalAmountRequests:     requestsAmount,
+		TotalAmountHTTPStatusOk: statusCodeRespList[200],
+		AllHTTPSStatus:          statusCodeRespList,
+	}
+	return &report, nil
 }
