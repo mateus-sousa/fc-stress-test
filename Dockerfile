@@ -4,6 +4,6 @@ WORKDIR /app
 
 COPY . .
 
-RUN go build -o stresstest ./cmd/app
+RUN go build -o stresstest .
 
-CMD [ "./stresstest"]
+CMD [ "./stresstest stress --url=http://www.google.com --requests=10 --concurrency=2"]
