@@ -6,4 +6,6 @@ COPY . .
 
 RUN go build -o stresstest .
 
-CMD [ "./stresstest stress --url=http://www.google.com --requests=10 --concurrency=2"]
+ENTRYPOINT ["./stresstest", "stress"]
+
+CMD ["--url=", "--requests=0", "--concurrency=0"]

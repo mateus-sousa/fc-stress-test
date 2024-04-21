@@ -21,6 +21,18 @@ var stressCmd = &cobra.Command{
 		url, _ := cmd.Flags().GetString("url")
 		requests, _ := cmd.Flags().GetInt64("requests")
 		concurrency, _ := cmd.Flags().GetInt64("concurrency")
+		if url == "" {
+			fmt.Println("Parametro url é obrigatório.")
+			return
+		}
+		if requests == 0 {
+			fmt.Println("Parametro requests é obrigatório.")
+			return
+		}
+		if concurrency == 0 {
+			fmt.Println("Parametro concurrency é obrigatório.")
+			return
+		}
 		stressTestUseCase := internal.NewStressTestUseCase()
 		report, err := stressTestUseCase.Exec(url, requests, concurrency)
 		if err != nil {
