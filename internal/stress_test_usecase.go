@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"log"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -18,14 +17,9 @@ func NewStressTestUseCase() *StressTestUseCase {
 func (s *StressTestUseCase) Exec(url string, requestsAmount, threadsAmount int64) (*Report, error) {
 	startTime := time.Now()
 	sentRequests := int64(0)
-	statusCodeRespList := map[int]int64{}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
+	statusCodeChan := make(chan int, requestsAmount)
 	wg := sync.WaitGroup{}
 	wg.Add(int(threadsAmount))
-	m := sync.Mutex{}
 	for i := int64(0); i < threadsAmount; i++ {
 		go func() {
 			for {
@@ -34,17 +28,19 @@ func (s *StressTestUseCase) Exec(url string, requestsAmount, threadsAmount int64
 					break
 				}
 				atomic.AddInt64(&sentRequests, 1)
-				res, err := http.DefaultClient.Do(req)
-				if err != nil {
-					log.Println(err.Error())
-				}
-				m.Lock()
-				statusCodeRespList[res.StatusCode] += 1
-				m.Unlock()
+				res, _ := http.Get(url)
+				statusCodeChan <- res.StatusCode
 			}
 		}()
 	}
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(statusCodeChan)
+	}()
+	statusCodeRespList := map[int]int64{}
+	for v := range statusCodeChan {
+		statusCodeRespList[v]++
+	}
 	duration := time.Now().Sub(startTime)
 	report := Report{
 		TotalTimeExec:           duration,
